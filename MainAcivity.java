@@ -1,34 +1,88 @@
-package com.novascript.executor
+package com.novascript.executor;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
+import android.content.ActivityNotFoundException;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Bundle;
+import android.widget.Toast;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
 
-public class Main {
-    public static void main(String[] args) {
+public class MainActivity extends AppCompatActivity {
+    private static final String ROBLOX_PACKAGE_NAME = "com.roblox.client";
+    
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        // Step 1: Check if Roblox is installed
+        if (isAppInstalled(ROBLOX_PACKAGE_NAME)) {
+            // Step 2: Prompt to uninstall Roblox if it's already installed
+            new AlertDialog.Builder(this)
+                .setTitle("Replace Roblox")
+                .setMessage("NovaScript asks: Can we delete the original roblox and install the executor?")
+                .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        uninstallRoblox();  // Step 3: Trigger uninstallation
+                    }
+                })
+                .setNegativeButton("No", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                })
+                .show();
+        } else {
+            // Step 4: If not installed, prompt for new installation directly
+            installRoblox();
+        }
+    }
+
+    // Check if the app is installed
+    private boolean isAppInstalled(String packageName) {
         try {
-            String urlString = "https://pastebin.com/raw/9UaLjr41";
-            URL url = new URL(urlString);
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-            connection.setRequestMethod("GET");
-
-            BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-            String inputLine;
-            StringBuilder content = new StringBuilder();
-            while ((inputLine = in.readLine()) != null) {
-                content.append(inputLine);
-            }
-          System.out.println("Made by NovaScript hacker");
-            in.close();
-            connection.disconnect();
-
-            // Execute the retrieved code (this part depends on what the code does)
-            // Note: Java does not have a direct equivalent to Lua's loadstring.
-            // You would need to implement a way to execute the code if it's Java code.
-
+            getPackageManager().getPackageInfo(packageName, 0);
+            return true;
         } catch (Exception e) {
-            e.printStackTrace();
+            return false;
+        }
+    }
+
+    // Uninstall the Roblox app
+    private void uninstallRoblox() {
+        Intent uninstallIntent = new Intent(Intent.ACTION_DELETE);
+        uninstallIntent.setData(Uri.parse("package:" + ROBLOX_PACKAGE_NAME));
+        startActivityForResult(uninstallIntent, 1);  // Use startActivityForResult to handle post-uninstall actions
+    }
+
+    // Redirect to install Roblox from Play Store or a specific URL
+    private void installRoblox() {
+        try {
+            Intent playStoreIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + ROBLOX_PACKAGE_NAME));
+            startActivity(playStoreIntent);
+        } catch (ActivityNotFoundException e) {
+            // If Play Store is not available, open in browser
+            Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=" + ROBLOX_PACKAGE_NAME));
+            startActivity(browserIntent);
+        }
+    }
+
+    // Handle post-uninstall actions
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        
+        // After uninstallation, prompt for installation
+        if (requestCode == 1) {
+            if (!isAppInstalled(ROBLOX_PACKAGE_NAME)) {
+                // App is uninstalled, prompt to install the new version
+                installRoblox();
+            } else {
+                Toast.makeText(this, "Uninstallation failed or canceled.", Toast.LENGTH_SHORT).show();
+            }
         }
     }
 }
